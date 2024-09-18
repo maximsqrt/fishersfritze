@@ -1,0 +1,9 @@
+import pytest
+from screen_agent import ScreenAgent
+from main import MainAgent
+
+def test_capture_screen():
+    main_agent = MainAgent()
+    screen_agent = ScreenAgent(main_agent)
+    screen_agent.capture_screen()  # Führt eine einmalige Bildschirmaufnahme durch
+    assert main_agent.get_cur_img() is not None, "Kein Bildschirmbild erfasst"
