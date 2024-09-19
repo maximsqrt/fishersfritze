@@ -8,7 +8,18 @@ from screeninfo import get_monitors
 
 
 
-def get_primary_monitor(self):
+
+
+
+
+
+class ScreenAgent:
+    def __init__(self, main_agent):
+        self.main_agent = main_agent
+        self.lock = Lock()
+        self.running = False
+        self.thread = None  # Initialisiere thread mit None
+    def get_primary_monitor(self):
         """Returns the primary monitor's details as a dictionary for MSS."""
         primary_monitor = None
         for monitor in get_monitors():
@@ -23,17 +34,6 @@ def get_primary_monitor(self):
         if not primary_monitor:
             logging.error("No primary monitor found.")
         return primary_monitor
-
-
-
-
-class ScreenAgent:
-    def __init__(self, main_agent):
-        self.main_agent = main_agent
-        self.lock = Lock()
-        self.running = False
-        self.thread = None  # Initialisiere thread mit None
-
    
     def capture_screen(self):
         with mss.mss() as sct:

@@ -7,8 +7,12 @@ import pyautogui
 import time
 import logging
 
-from .screen_agent import get_primary_monitor
-print("false test ------ AAAAAH")
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+from screen_agent import ScreenAgent
+
 # Initialise  Logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -25,7 +29,7 @@ class FishingAgent:
     def start(self):
         self.running = True
         logging.info('Fishing Agent Started')
-        pass
+        self.cast_lure()
 
     def cast_lure(self):
         time.sleep(2)
@@ -40,8 +44,15 @@ class FishingAgent:
 
     def find_lure(self):
         cur_img = self.main_agent.get_cur_img()
-        if cur_img is None or self.fishing_target is None:
-            logging.error("Current image or fishing target template is not available.")
+         # Prüfen, ob cur_img und fishing_target korrekt geladen wurden
+        if cur_img is None and self.fishing_target is None:
+            logging.error("Both current image and fishing target template are not available.")
+            return None
+        elif cur_img is None:
+            logging.error("Current image is not available (cur_img is None).")
+            return None
+        elif self.fishing_target is None:
+            logging.error("Fishing target template is not available (fishing_target is None).")
             return None
 
         # Apply template matching to find the lure
@@ -60,7 +71,9 @@ class FishingAgent:
             return None
 
     def move_to_lure(self, center_loc):
-        primary_monitor = get_primary_monitor()
+        main_agent = None
+        screen_agent = ScreenAgent(main_agent)
+        primary_monitor = screen_agent.get_primary_monitor()
         screen_width, screen_height = primary_monitor.width, primary_monitor.height
         scale_x = screen_width / self.main_agent.get_cur_img().shape[1]
         scale_y = screen_height / self.main_agent.get_cur_img().shape[0]
