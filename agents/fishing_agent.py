@@ -1,17 +1,15 @@
 ### FUNCTIONALITY ###
 #CAST LURE - FIND LURE - MOVE TO LURE - LISTEN FOR BYTE (defined in audio_agent)
-import sys
-import os
+
 import cv2 as cv
 import numpy as np
 import pyautogui
 import time
 import logging
 
+from .screen_agent import get_primary_monitor
 
-from agents.screen_agent import get_primary_monitor
-
-# Initialisiere das Logging
+# Initialise  Logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class FishingAgent:
