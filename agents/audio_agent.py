@@ -48,7 +48,7 @@ class AudioAgent:
                 current_sound = AudioSegment(current_sound.tobytes(), sample_width=2, frame_rate=self.sample_rate, channels=self.channels)
                 
                 correlation = self.compare_sounds(self.bite_sound, current_sound)
-                if correlation > 0.1:  # Threshold to detect a bite
+                if correlation > 0.2:  # Threshold to detect a bite
                     print("Bite detected!")
                     bite_detected = True
 

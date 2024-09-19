@@ -74,7 +74,15 @@ class FishingAgent:
         main_agent = None
         screen_agent = ScreenAgent(main_agent)
         primary_monitor = screen_agent.get_primary_monitor()
-        screen_width, screen_height = primary_monitor.width, primary_monitor.height
+
+        if primary_monitor is None:
+            logging.error("Primary monitor could not be determined.")
+            return
+
+        # Greife auf die Werte des Dictionaries zu
+        screen_width = primary_monitor['width']
+        screen_height = primary_monitor['height']
+
         scale_x = screen_width / self.main_agent.get_cur_img().shape[1]
         scale_y = screen_height / self.main_agent.get_cur_img().shape[0]
 
@@ -83,7 +91,11 @@ class FishingAgent:
         adjusted_y = int(center_loc[1] * scale_y)
         pyautogui.moveTo(adjusted_x, adjusted_y, duration=0.1, tween=pyautogui.easeOutQuad)
         print(f"Cursor moved to ({adjusted_x}, {adjusted_y})")
-        self.listen_for_bite()
+        if self.audio_agent.listen_for_bite():
+            pyautogui.click(button='right')  # Rechtsklick ausführen
+            time.sleep(.5)
+            self.cast_lure()
+
 
     
     
