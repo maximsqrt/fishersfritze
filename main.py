@@ -53,7 +53,7 @@ def main():
             audio_agent.stop()
             if fishing_agent:
                 fishing_agent.stop()
-            break  # Beende das Programm
+            break  # Beende das Program
         else:
             print("Invalid command. Please try again.")
 
