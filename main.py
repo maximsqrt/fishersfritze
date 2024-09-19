@@ -1,7 +1,7 @@
 import logging
 from agents.screen_agent import ScreenAgent
 from agents.audio_agent import AudioAgent
-from agents.fishing_agent import FishingAgent
+
 from main_agent import MainAgent
 
 def main():
@@ -32,7 +32,7 @@ def main():
     print("\nEnter a command:")
     print("\tF\tStart Fishing")
     print("\tQ\tQuit")
-
+    from agents.fishing_agent import FishingAgent
     # wait
     while True:
         user_input = input("Please enter a command: ").strip().upper()
