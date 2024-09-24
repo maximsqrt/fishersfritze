@@ -63,7 +63,7 @@ class FishingAgent:
         try:
             result = cv.matchTemplate(cur_img, self.fishing_target, cv.TM_CCOEFF_NORMED)
             min_val, max_val, min_loc, max_loc = cv.minMaxLoc(result)
-            threshold = 0.5
+            threshold = 0.2
             if max_val < threshold:
                 return None
 

@@ -1,3 +1,6 @@
+#### DONT FORGET IMPORT & OUTPUT BLACKHOLE 1CH ###
+
+
 import logging
 from agents.screen_agent import ScreenAgent
 from agents.audio_agent import AudioAgent

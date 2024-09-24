@@ -14,7 +14,7 @@ CHUNK = 1024
 FORMAT = pyaudio.paInt16
 CHANNELS = 1
 RATE = 44100
-RECORD_SECONDS = 60  # 1 Minute Aufnahme
+RECORD_SECONDS = 10  # 10 Sekunden Aufnahme
 
 def load_template_sound(path):
     # Lade die .wav-Datei und konvertiere sie in ein numpy-Array
@@ -22,8 +22,11 @@ def load_template_sound(path):
     if wf.getnchannels() != CHANNELS:
         print("Der Templatesound muss mono sein.")
         sys.exit(1)
+    if wf.getframerate() != RATE:
+        print(f"Der Templatesound muss eine Abtastrate von {RATE} Hz haben.")
+        sys.exit(1)
     template_frames = wf.readframes(wf.getnframes())
-    template_signal = np.frombuffer(template_frames, dtype=np.int16)
+    template_signal = np.frombuffer(template_frames, dtype=np.int16).astype(np.float64)
     wf.close()
     return template_signal
 
@@ -39,8 +42,8 @@ def main():
     # Initialisiere PyAudio
     p = pyaudio.PyAudio()
 
-    # Wähle das Eingabegerät (falls nötig, den Index des gewünschten Geräts hier angeben)
-    INPUT_DEVICE_INDEX = None  # Oder z.B. 1, wenn du ein bestimmtes Gerät verwenden möchtest
+    # Wähle das Eingabegerät (falls nötig)
+    INPUT_DEVICE_INDEX = None  # Anpassen, falls erforderlich
 
     # Öffne den Stream für die Audioeingabe
     stream = p.open(format=FORMAT,
@@ -52,34 +55,14 @@ def main():
 
     print("Aufnahme gestartet. Bitte den Sound manuell erzeugen...")
     frames = []
-    timestamps = []
-    detections = []
 
     start_time = time.time()
     try:
         while time.time() - start_time < RECORD_SECONDS:
             data = stream.read(CHUNK, exception_on_overflow=False)
             frames.append(data)
-            audio_chunk = np.frombuffer(data, dtype=np.int16)
-
-            # Kreuzkorrelation durchführen
-            correlation = correlate(audio_chunk, template_signal, mode='valid')
-            peak = np.max(np.abs(correlation))
-
-            # Schwellenwert für Erkennung (muss ggf. angepasst werden)
-            threshold = 1e7  # Passe diesen Wert an deine Bedürfnisse an
-
-            if peak > threshold:
-                detection_time = time.time() - start_time
-                print(f"Templatesound erkannt bei {detection_time:.2f} Sekunden")
-                detections.append(detection_time)
-
-            # Zeitstempel für die grafische Darstellung speichern
-            timestamps.append(time.time() - start_time)
-
     except KeyboardInterrupt:
         print("Aufnahme beendet.")
-
     finally:
         # Beende den Stream und PyAudio
         stream.stop_stream()
@@ -90,20 +73,41 @@ def main():
 
     # Konvertiere die aufgenommenen Frames in ein numpy-Array
     audio_data = b''.join(frames)
-    audio_signal = np.frombuffer(audio_data, dtype=np.int16)
+    audio_signal = np.frombuffer(audio_data, dtype=np.int16).astype(np.float64)
 
-    # Grafische Darstellung erstellen
+    # Mittelwert von Signalen subtrahieren
+    audio_signal -= np.mean(audio_signal)
+    template_signal -= np.mean(template_signal)
+
+    # Kreuzkorrelation über das gesamte Signal durchführen
+    correlation = correlate(audio_signal, template_signal, mode='valid')
+
+    # Normalisierung der Kreuzkorrelation
+    norm_factor = np.sqrt(np.sum(audio_signal**2) * np.sum(template_signal**2))
+    if norm_factor == 0:
+        norm_factor = 1
+    correlation_normalized = correlation / norm_factor
+
+    # Plot der Kreuzkorrelation
     plt.figure(figsize=(15, 5))
+    plt.plot(correlation_normalized)
+    plt.title('Normalisierte Kreuzkorrelation')
+    plt.xlabel('Zeit (Samples)')
+    plt.ylabel('Korrelationswert')
+    plt.show()
 
-    # Wellenform darstellen
-    times = np.linspace(0, RECORD_SECONDS, num=len(audio_signal))
-    plt.plot(times, audio_signal, label='Aufgenommenes Audio')
+    # Erkennungszeitpunkte ermitteln
+    threshold = 0.5  # Anpassen je nach beobachteten Werten
+    detections = np.where(correlation_normalized > threshold)[0]
+    detection_times = detections / RATE  # Umrechnung in Sekunden
 
-    # Erkennungszeitpunkte markieren
-    for detection_time in detections:
-        plt.axvline(x=detection_time, color='r', linestyle='--', label='Erkannte Templatesounds')
-
-    plt.title('Aufgenommene Audio-Wellenform mit Erkennungsmarkierungen')
+    # Plot der aufgenommenen Audiodaten mit Markierungen
+    times = np.linspace(0, len(audio_signal) / RATE, num=len(audio_signal))
+    plt.figure(figsize=(15, 5))
+    plt.plot(times, audio_signal)
+    for dt in detection_times:
+        plt.axvline(x=dt, color='r', linestyle='--', label='Erkannter Templatesound')
+    plt.title('Aufgenommenes Audio mit Erkennungsmarkierungen')
     plt.xlabel('Zeit (Sekunden)')
     plt.ylabel('Amplitude')
     plt.legend()
