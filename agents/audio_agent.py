@@ -11,12 +11,26 @@ class AudioAgent:
         self.chunk = chunk
         self.sample_rate = sample_rate
         self.format = pyaudio.paInt16
-        self.channels = 2
+        self.channels = 2  # Da BlackHole 2ch zwei Kanäle hat
         self.p = pyaudio.PyAudio()
-        self.device_index = 1  # Standard device index
+        self.device_index = None
         self.running = False
         self.thread = None
         logging.info("AudioAgent initialized")
+
+        # Finde den Index des BlackHole-Geräts
+        self.find_blackhole_device()
+
+    def find_blackhole_device(self):
+        for i in range(self.p.get_device_count()):
+            dev = self.p.get_device_info_by_index(i)
+            if 'BlackHole' in dev['name']:
+                self.device_index = i
+                print(f"Found BlackHole device at index {i}")
+                break
+        if self.device_index is None:
+            logging.error("BlackHole device not found.")
+            raise ValueError("BlackHole device not found.")
 
     def start(self):
         logging.info("AudioAgent started.")
@@ -41,14 +55,25 @@ class AudioAgent:
                                  frames_per_buffer=self.chunk)
             logging.debug("Audio stream opened successfully.")
             print("Listening for bite...")
-
-            while not bite_detected and time.time() - watch_time < 20:  # 20 seconds timeout
+            while not bite_detected and time.time() - watch_time < 20:  # 20 Sekunden Timeout
                 data = stream.read(self.chunk, exception_on_overflow=False)
                 current_sound = np.frombuffer(data, dtype=np.int16)
-                current_sound = AudioSegment(current_sound.tobytes(), sample_width=2, frame_rate=self.sample_rate, channels=self.channels)
-                
-                correlation = self.compare_sounds(self.bite_sound, current_sound)
-                if correlation > 0.2:  # Threshold to detect a bite
+
+                # Stereo zu Mono konvertieren
+                if self.channels == 2:
+                    current_sound = current_sound.reshape(-1, 2)
+                    current_sound = current_sound.mean(axis=1).astype(np.int16)
+
+                # Erstelle ein AudioSegment aus den aktuellen Daten
+                current_sound_segment = AudioSegment(
+                    current_sound.tobytes(),
+                    frame_rate=self.sample_rate,
+                    sample_width=2,  # 2 Bytes für paInt16
+                    channels=1  # Nach Konvertierung zu Mono
+                )
+
+                correlation = self.compare_sounds(self.bite_sound, current_sound_segment)
+                if correlation > 0.2:  # Schwellenwert für die Erkennung
                     print("Bite detected!")
                     bite_detected = True
 
@@ -59,7 +84,7 @@ class AudioAgent:
             if stream is not None:
                 stream.stop_stream()
                 stream.close()
-            self.p.terminate()
+            # self.p.terminate()  # Nur terminieren, wenn pyaudio nicht weiter verwendet wird
             logging.debug("Audio stream closed.")
 
     def compare_sounds(self, sound1, sound2):
@@ -70,6 +95,7 @@ class AudioAgent:
         sound1_data = sound1_data[:min_len]
         sound2_data = sound2_data[:min_len]
 
+        # Normalisierte Kreuzkorrelation
         numerator = np.correlate(sound1_data, sound2_data, mode='valid')[0]
         denominator = np.sqrt(np.correlate(sound1_data, sound1_data, mode='valid')[0] * np.correlate(sound2_data, sound2_data, mode='valid')[0])
         if denominator == 0:

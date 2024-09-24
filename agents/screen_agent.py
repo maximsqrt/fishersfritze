@@ -32,15 +32,18 @@ class ScreenAgent:
 
     def capture_screen(self):
         with mss.mss() as sct:
-            # Use the primary monitor from sct.monitors
-            monitor = sct.monitors[0]  # sct.monitors[0] is usually the primary monitor
+            # Verwende die Details des primären Monitors
+            monitor = self.get_primary_monitor()
+            if not monitor:
+                logging.error("No primary monitor found.")
+                return
 
             frame_count = 0
-            fps_report_time = time.time()  # Zeitstempel für FPS-Report
-            fps_report_interval = 10  # Wie oft FPS gemeldet werden (in Sekunden)
+            fps_report_time = time.time()
+            fps_report_interval = 10
 
             while self.running:
-                # Screenshot des Monitors machen
+                # Screenshot des primären Monitors machen
                 screenshot = np.array(sct.grab(monitor))
 
                 # Sicherstellen, dass der Screenshot valide ist
@@ -62,11 +65,12 @@ class ScreenAgent:
                 # FPS jede Sekunde berechnen
                 if time.time() - fps_report_time >= fps_report_interval:
                     self.report_fps(frame_count, fps_report_time)
-                    frame_count = 0  # Frame-Zähler zurücksetzen
-                    fps_report_time = time.time()  # Zeitstempel aktualisieren
+                    frame_count = 0
+                    fps_report_time = time.time()
 
                 # Kurze Pause, um CPU-Auslastung zu minimieren
                 time.sleep(0.005)
+
 
     def report_fps(self, frame_count, last_report_time):
         elapsed_time = time.time() - last_report_time

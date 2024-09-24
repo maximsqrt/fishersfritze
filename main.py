@@ -13,11 +13,10 @@ def main():
 
     
     screen_agent = ScreenAgent(main_agent)
+    main_agent.screen_agent = screen_agent
     logging.debug("ScreenAgent initialized")
-
-   
-    
     screen_agent.start()
+    
     logging.debug("ScreenAgent started")
     
 
@@ -41,7 +40,8 @@ def main():
             if fishing_agent is None:  # Initialisiere den FishingAgent nur einmal, wenn F gedrückt wird
                 print("Starting Fishing Agent...")
                 logging.debug("FishingAgent initialization started")
-                fishing_agent = FishingAgent(main_agent, audio_agent)  # INITIALISIERUNG HIER
+                fishing_agent = FishingAgent(main_agent, audio_agent, screen_agent)
+  # INITIALISIERUNG HIER
                 logging.debug("FishingAgent initialized")
                 fishing_agent.start()
             else:
