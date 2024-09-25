@@ -1,110 +1,62 @@
-# import cv2 as cv
-# import os
-
-# def test_image_loading(image_path):
-#     # Überprüfe, ob die Datei existiert
-#     if not os.path.exists(image_path):
-#         print(f"Error: The file at {image_path} does not exist.")
-#         return
-
-#     # Versuche, das Bild zu laden
-#     image = cv.imread(image_path)
-
-#     if image is None:
-#         print(f"Error: Failed to load image from {image_path}.")
-#     else:
-#         print(f"Success: Image loaded successfully from {image_path}.")
-#         # Zeige das Bild in einem Fenster an (optional)
-#         cv.imshow('Loaded Image', image)
-#         cv.waitKey(0)  # Warte auf eine Tasteneingabe, bevor das Fenster geschlossen wird
-#         cv.destroyAllWindows()
-
-# if __name__ == "__main__":
-#     # Pfad zu deinem Bild
-#     image_path = "/Users/magnus/Desktop/fancybuddy/resources/images/fishing_template.png"
-#     test_image_loading(image_path)
-import pyaudio
-import wave
 import numpy as np
-import time
-from scipy.signal import correlate
-import sys
-def list_input_devices():
-    p = pyaudio.PyAudio()
-    print("Available audio input devices:")
-    for i in range(p.get_device_count()):
-        dev = p.get_device_info_by_index(i)
-        if dev['maxInputChannels'] > 0:
-            print(f"Index {i}: {dev['name']}")
-    p.terminate()
-# Pfad zur Referenzsounddatei (.wav)
-REFERENCE_SOUND_PATH = '/Users/magnus/Desktop/fancybuddy/resources/sounds/bitesound.wav'
+import wave
+import pyaudio
+from scipy.signal import fftconvolve
 
-# Audio-Einstellungen
-CHUNK = 1024          # Anzahl der Frames pro Puffer
-FORMAT = pyaudio.paInt16  # 16-Bit-Auflösung
-CHANNELS = 1          # Mono
-RATE = 44100          # Abtastrate
-
-def load_reference_sound(path):
-    # Lade die .wav-Datei und konvertiere sie in ein numpy-Array
-    wf = wave.open(path, 'rb')
-    reference_frames = wf.readframes(wf.getnframes())
-    reference_signal = np.frombuffer(reference_frames, dtype=np.int16)
+def load_sound(file_path, sample_rate=44100, channels=1):
+    wf = wave.open(file_path, 'rb')
+    if wf.getframerate() != sample_rate or wf.getnchannels() != channels:
+        raise ValueError("Sound file must match the sample rate and channels.")
+    frames = wf.readframes(wf.getnframes())
+    signal = np.frombuffer(frames, dtype=np.int16)
     wf.close()
-    return reference_signal
+    return signal
 
-def main():
-    # Lade den Referenzsound
-    try:
-        reference_signal = load_reference_sound(REFERENCE_SOUND_PATH)
-        print("Referenzsound geladen.")
-    except FileNotFoundError:
-        print(f"Die Datei {REFERENCE_SOUND_PATH} wurde nicht gefunden.")
-        sys.exit(1)
+def normalize_signal(signal):
+    signal = signal - np.mean(signal)
+    signal = signal / np.max(np.abs(signal))
+    return signal
 
-    # Initialisiere PyAudio
+def perform_fft_correlation(data_signal, template_signal):
+    # Berechnung der Fourier-Transformierten
+    data_fft = np.fft.fft(data_signal, n=(len(data_signal) + len(template_signal) - 1))
+    template_fft = np.fft.fft(template_signal, n=(len(data_signal) + len(template_signal) - 1))
+    # Kreuzkorrelation im Frequenzbereich und Rücktransformation
+    correlation = np.fft.ifft(data_fft * np.conj(template_fft)).real
+    return correlation
+
+def test_bite_detection(audio_input_path, bite_sound_path, sample_rate=44100, chunk_size=1024):
+    # Lade den Biss-Sound
+    bite_sound = load_sound(bite_sound_path, sample_rate)
+    bite_sound = normalize_signal(bite_sound)
+
+    # Konfiguration des Audio-Streams
     p = pyaudio.PyAudio()
+    stream = p.open(format=pyaudio.paInt16, channels=1, rate=sample_rate, input=True, frames_per_buffer=chunk_size)
 
-    # Öffne den Stream für die Audioeingabe
-    stream = p.open(format=FORMAT,
-                    channels=CHANNELS,
-                    rate=RATE,
-                    input=True,
-                    frames_per_buffer=CHUNK)
-
-    print("Audio-Stream gestartet. Warte auf den Zielsound...")
-
+    print("Starting bite sound detection test...")
     try:
-        while True:
-            # Lese Daten aus dem Stream
-            data = stream.read(CHUNK, exception_on_overflow=False)
-            audio_data = np.frombuffer(data, dtype=np.int16)
+        # Aufnehmen eines kurzen Audio-Segments zum Testen
+        frames = []
+        for _ in range(0, int(sample_rate / chunk_size * 2)):  # Nehme für 2 Sekunden auf
+            data = stream.read(chunk_size)
+            frames.append(data)
+        audio_data = np.frombuffer(b''.join(frames), dtype=np.int16)
+        audio_data = normalize_signal(audio_data)
 
-            # Überprüfung der Länge des Referenzsignals
-            if len(audio_data) < len(reference_signal):
-                continue  # Warte, bis genügend Daten gesammelt wurden
-
-            # Kreuzkorrelation durchführen
-            correlation = correlate(audio_data, reference_signal, mode='valid')
-            peak = np.max(np.abs(correlation))
-
-            # Schwellenwert für Erkennung (muss ggf. angepasst werden)
-            threshold = 1e7
-
-            if peak > threshold:
-                print("Zielsound erkannt!")
-                # Hier kannst du weitere Aktionen hinzufügen
-                break
-
-    except KeyboardInterrupt:
-        print("Erkennung beendet.")
+        # FFT-basierte Korrelation durchführen
+        correlation = perform_fft_correlation(audio_data, bite_sound)
+        # Finde den höchsten Peak in der Korrelation
+        peak = np.max(correlation)
+        print(f"Max correlation peak: {peak}")
 
     finally:
-        # Beende den Stream und PyAudio
         stream.stop_stream()
         stream.close()
         p.terminate()
 
-if __name__ == '__main__':
-    main()
+# Pfade zu den Audiodateien
+audio_input_path = '/path/to/real_time_captured_audio.wav'  # Pfad zur Echtzeitaufnahme
+bite_sound_path = '/Users/magnus/Desktop/fancybuddy/resources/sounds/bitesound.wav'
+
+test_bite_detection(audio_input_path, bite_sound_path)

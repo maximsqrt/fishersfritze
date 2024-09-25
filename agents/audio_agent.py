@@ -64,7 +64,7 @@ class AudioAgent:
 
     def listen_for_bite(self):
         bite_detected = False
-        MAX_DURATION = 30  # Maximale Laufzeit in Sekunden
+        MAX_DURATION = 28  # Maximale Laufzeit in Sekunden
         max_peak = 0  # Variable zur Speicherung des maximalen Peaks
 
         try:
@@ -112,12 +112,12 @@ class AudioAgent:
                 max_peak = max(max_peak, peak)
 
                 # Schwellenwert für die Erkennung
-                threshold = 0.015  # Angepasster Schwellenwert
+                threshold = 0.02  # Angepasster Schwellenwert
                 if peak > threshold:
                     print("Bite detected!")
                     bite_detected = True
                     break  # Schleife abbrechen, wenn der Bite erkannt wurde
-
+                else: False    
         except Exception as e:
             logging.error(f"Error during audio processing: {e}")
 

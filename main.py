@@ -6,8 +6,13 @@ from agents.screen_agent import ScreenAgent
 from agents.audio_agent import AudioAgent
 from agents.fishing_agent import FishingAgent
 from main_agent import MainAgent
+from agents.apply_fish_attractor import press_buttons
+
+
+
 
 def main():
+    2
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
     
@@ -35,6 +40,8 @@ def main():
     print("\tF\tStart Fishing")
     print("\tQ\tQuit")
     
+    ##Apply2
+    press_buttons(interval_minutes=5)
     # wait
     while True:
         user_input = input("Please enter a command: ").strip().upper()

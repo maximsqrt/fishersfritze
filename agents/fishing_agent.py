@@ -43,7 +43,7 @@ class FishingAgent:
         self.cast_lure()
 
     def cast_lure(self):
-        time.sleep(2)
+        time.sleep(.5)
         pyautogui.press('1')  # Simulates pressing the fishing key
         print("Casting!...")
         time.sleep(2)
@@ -107,14 +107,15 @@ class FishingAgent:
         print(f"Adjusted coordinates: ({adjusted_x}, {adjusted_y})")
 
         # Bewege die Maus zur angepassten Position
-        pyautogui.moveTo(adjusted_x, adjusted_y, duration=0.1, tween=pyautogui.easeOutQuad)
+        pyautogui.moveTo(adjusted_x, adjusted_y, duration=0.5, tween=pyautogui.easeOutQuad)
         print(f"Cursor moved to ({adjusted_x}, {adjusted_y})")
 
         # Warte auf den Biss und führe einen Rechtsklick aus
         if self.audio_agent.listen_for_bite():
             pyautogui.click(button='right')  # Rechtsklick ausführen
-            time.sleep(0.5)
+            time.sleep(0.04)
             self.cast_lure()
+        else: self.cast_lure()
 
 
 
